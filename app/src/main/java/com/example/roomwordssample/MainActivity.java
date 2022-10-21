@@ -18,6 +18,7 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,6 +33,11 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     public static final int NEW_WORD_ACTIVITY_REQUEST_CODE = 1;
+
+    public static final int UPDATE_WORD_ACTIVITY_REQUEST_CODE = 2;
+
+    public static final String EXTRA_DATA_UPDATE_WORD = "extra_word_to_be_updated";
+    public static final String EXTRA_DATA_ID = "extra_data_id";
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
@@ -73,6 +79,43 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(intent, NEW_WORD_ACTIVITY_REQUEST_CODE);
             }
         });
+
+        ItemTouchHelper helper = new ItemTouchHelper(
+                new ItemTouchHelper.SimpleCallback(0,
+                        ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+                    @Override
+                    public boolean onMove(RecyclerView recyclerView,
+                                          RecyclerView.ViewHolder viewHolder,
+                                          RecyclerView.ViewHolder target) {
+                        return false;
+                    }
+
+                    @Override
+                    public void onSwiped(RecyclerView.ViewHolder viewHolder,
+                                         int direction) {
+                        int position = viewHolder.getAdapterPosition();
+                        Word myWord = adapter.getWordAtPosition(position);
+                        Toast.makeText(MainActivity.this, "Deleting " +
+                                myWord.getWord(), Toast.LENGTH_LONG).show();
+
+                        // Delete the word
+                        mWordViewModel.deleteWord(myWord);
+                    }
+                });
+
+        helper.attachToRecyclerView(recyclerView);
+
+        //Actualizar
+        helper.attachToRecyclerView(recyclerView);
+
+        adapter.setOnItemClickListener(new WordListAdapter.ClickListener()  {
+
+            @Override
+            public void onItemClick(View v, int position) {
+                Word word = adapter.getWordAtPosition(position);
+                launchUpdateWordActivity(word);
+            }
+        });
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -80,13 +123,30 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == NEW_WORD_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK) {
             Word word = new Word(data.getStringExtra(NewWordActivity.EXTRA_REPLY));
+            //save the data
             mWordViewModel.insert(word);
+        } else if (requestCode == UPDATE_WORD_ACTIVITY_REQUEST_CODE
+                && resultCode == RESULT_OK) {
+            String word_data = data.getStringExtra(NewWordActivity.EXTRA_REPLY);
+            int id = data.getIntExtra(NewWordActivity.EXTRA_REPLY_ID, -1);
+
+            if (id != -1) {
+                mWordViewModel.update(new Word(id, word_data));
+            } else {
+                Toast.makeText(this, R.string.unable_to_update,
+                        Toast.LENGTH_LONG).show();
+            }
         } else {
             Toast.makeText(
-                    getApplicationContext(),
-                    R.string.empty_not_saved,
-                    Toast.LENGTH_LONG).show();
+            this, R.string.empty_not_saved, Toast.LENGTH_LONG).show();
         }
+    }
+
+    public void launchUpdateWordActivity( Word word) {
+        Intent intent = new Intent(this, NewWordActivity.class);
+        intent.putExtra(EXTRA_DATA_UPDATE_WORD, word.getWord());
+        intent.putExtra(EXTRA_DATA_ID, word.getId());
+        startActivityForResult(intent, UPDATE_WORD_ACTIVITY_REQUEST_CODE);
     }
 
     @Override
@@ -105,7 +165,11 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            return true;
+            // Add a toast just for confirmation
+            Toast.makeText(this, R.string.clear_data_toast_text, Toast.LENGTH_LONG).show();
+
+            // Delete the existing data.
+            mWordViewModel.deleteAll();
         }
 
         return super.onOptionsItemSelected(item);

@@ -17,11 +17,19 @@ public class WordListAdapter extends RecyclerView.Adapter<WordListAdapter.WordVi
         private WordViewHolder(View itemView) {
             super(itemView);
             wordItemView = itemView.findViewById(R.id.textView);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    clickListener.onItemClick(view, getAdapterPosition());
+                }
+            });
         }
     }
 
     private final LayoutInflater mInflater;
     private List<Word> mWords; // Cached copy of words
+
+    private static ClickListener clickListener;
 
     WordListAdapter(Context context) { mInflater = LayoutInflater.from(context); }
 
@@ -54,5 +62,17 @@ public class WordListAdapter extends RecyclerView.Adapter<WordListAdapter.WordVi
         if (mWords != null)
             return mWords.size();
         else return 0;
+    }
+
+    public Word getWordAtPosition (int position) {
+        return mWords.get(position);
+    }
+
+    public void setOnItemClickListener(ClickListener clickListener) {
+        WordListAdapter.clickListener = clickListener;
+    }
+
+    public interface ClickListener {
+        void onItemClick(View v, int position);
     }
 }
